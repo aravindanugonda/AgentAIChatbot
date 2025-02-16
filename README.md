@@ -1,46 +1,121 @@
-# Getting Started with Create React App
+# AgentAI Chatbot
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern chat interface for interacting with various AI models through different providers (OpenAI, OpenRouter, HuggingFace, etc.) with persistent chat history using Turso DB.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- 🎯 Multi-provider support (OpenAI, OpenRouter, HuggingFace)
+- 💾 Persistent chat history using Turso DB
+- 🗂️ Multiple chat sessions support
+- ⚙️ Configurable settings for:
+  - API endpoints
+  - Model selection
+  - Token limits
+  - Temperature
+  - Database connection
+- 🎨 Clean, modern Material-UI interface
+- 💬 Real-time chat experience
+- 🔐 Secure storage of API keys
 
-### `npm start`
+## Prerequisites
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+Before you begin, ensure you have the following installed:
+- Node.js (v14 or higher)
+- npm (v6 or higher)
+- Git
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Getting Started
 
-### `npm test`
+1. Clone the repository:
+```bash
+git clone https://github.com/aravindanugonda/AgentAIChatbot.git
+cd AgentAIChatbot
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+2. Install dependencies:
+```bash
+npm install
+```
 
-### `npm run build`
+3. Set up Turso DB:
+- Visit [Turso](https://turso.tech) and create an account
+- Create a new database
+- Note down your database URL and authentication token
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+4. Start the development server:
+```bash
+npm start
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+5. Open your browser and navigate to `http://localhost:3000`
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Configuration
 
-### `npm run eject`
+On first run, click the settings icon and configure:
+1. API Key for your chosen AI provider
+2. API URL (defaults to OpenAI)
+3. Default model
+4. Turso database URL
+5. Turso authentication token
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## Development
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Project Structure
+- `/src` - Source code
+  - `/components` - React components
+  - `/services` - Service layer (API clients, database)
+  - `App.tsx` - Main application component
+  - `App.css` - Global styles
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### Making Changes
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+1. Create a new branch:
+```bash
+git checkout -b feature/your-feature-name
+```
 
-## Learn More
+2. Make your changes and test them
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+3. Commit your changes:
+```bash
+git add .
+git commit -m "Description of your changes"
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+4. Push to GitHub:
+```bash
+git push origin feature/your-feature-name
+```
+
+5. Create a Pull Request on GitHub
+
+## Building for Production
+
+To create a production build:
+
+```bash
+npm run build
+```
+
+The build artifacts will be stored in the `build/` directory.
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to your fork
+5. Create a Pull Request
+
+## Technologies Used
+
+- React
+- TypeScript
+- Material-UI
+- Axios
+- Turso DB
+- LibSQL
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

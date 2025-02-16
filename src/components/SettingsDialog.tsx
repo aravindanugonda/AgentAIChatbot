@@ -17,6 +17,8 @@ interface ApiConfig {
   model: string;
   maxTokens: number;
   temperature: number;
+  tursoUrl: string;
+  tursoAuthToken?: string;
 }
 
 interface SettingsDialogProps {
@@ -40,9 +42,10 @@ export function SettingsDialog({ open, config, onClose, onSave }: SettingsDialog
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>API Settings</DialogTitle>
+      <DialogTitle>Settings</DialogTitle>
       <DialogContent>
         <Stack spacing={3} sx={{ mt: 1 }}>
+          <Typography variant="h6" gutterBottom>API Settings</Typography>
           <TextField
             label="API Key"
             value={tempConfig.apiKey}
@@ -86,6 +89,22 @@ export function SettingsDialog({ open, config, onClose, onSave }: SettingsDialog
               valueLabelDisplay="auto"
             />
           </Stack>
+
+          <Typography variant="h6" gutterBottom>Database Settings</Typography>
+          <TextField
+            label="Turso Database URL"
+            value={tempConfig.tursoUrl}
+            onChange={(e) => setTempConfig({ ...tempConfig, tursoUrl: e.target.value })}
+            placeholder="libsql://your-database-url"
+            fullWidth
+          />
+          <TextField
+            label="Turso Auth Token"
+            value={tempConfig.tursoAuthToken}
+            onChange={(e) => setTempConfig({ ...tempConfig, tursoAuthToken: e.target.value })}
+            type="password"
+            fullWidth
+          />
         </Stack>
       </DialogContent>
       <DialogActions>

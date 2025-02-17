@@ -1,15 +1,16 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   List,
   ListItem,
-  ListItemButton,
   ListItemText,
+  ListItemSecondaryAction,
   IconButton,
   Button,
   Box,
   Typography,
+  Tooltip,
 } from '@mui/material';
-import { Add, Delete } from '@mui/icons-material';
+import { Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import type { Chat } from '../services/TursoService';
 
 interface ChatListProps {
@@ -20,67 +21,124 @@ interface ChatListProps {
   onDeleteChat: (chatId: string) => void;
 }
 
-export function ChatList({ chats, selectedChatId, onChatSelect, onNewChat, onDeleteChat }: ChatListProps) {
+const ChatListItem = memo(({ 
+  chat, 
+  isSelected, 
+  onSelect, 
+  onDelete 
+}: { 
+  chat: Chat; 
+  isSelected: boolean; 
+  onSelect: () => void; 
+  onDelete: () => void;
+}) => (
+  <ListItem
+    button
+    selected={isSelected}
+    onClick={onSelect}
+    sx={{
+      borderRadius: 1,
+      mb: 0.5,
+      '&.Mui-selected': {
+        backgroundColor: 'primary.light',
+        color: 'white',
+        '&:hover': {
+          backgroundColor: 'primary.main',
+        },
+      },
+    }}
+  >
+    <ListItemText
+      primary={chat.title}
+      secondary={
+        <Typography
+          variant="body2"
+          sx={{
+            color: isSelected ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {chat.last_message || 'No messages yet'}
+        </Typography>
+      }
+    />
+    <ListItemSecondaryAction>
+      <Tooltip title="Delete chat">
+        <IconButton
+          edge="end"
+          onClick={onDelete}
+          sx={{
+            color: isSelected ? 'white' : 'inherit',
+            '&:hover': {
+              backgroundColor: isSelected ? 'primary.dark' : undefined,
+            },
+          }}
+        >
+          <DeleteIcon />
+        </IconButton>
+      </Tooltip>
+    </ListItemSecondaryAction>
+  </ListItem>
+));
+
+ChatListItem.displayName = 'ChatListItem';
+
+const ChatList = memo(({ 
+  chats, 
+  selectedChatId, 
+  onChatSelect, 
+  onNewChat, 
+  onDeleteChat 
+}: ChatListProps) => {
   return (
-    <Box sx={{ 
-      height: '100%', 
-      display: 'flex', 
-      flexDirection: 'column',
-      borderRight: 1,
-      borderColor: 'divider',
-      bgcolor: 'white',
-    }}>
-      <Box sx={{ p: 2 }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
         <Button
           variant="contained"
           fullWidth
-          startIcon={<Add />}
+          startIcon={<AddIcon />}
           onClick={onNewChat}
         >
           New Chat
         </Button>
       </Box>
-      
-      <List sx={{ flex: 1, overflow: 'auto' }}>
+      <List sx={{ 
+        flex: 1, 
+        overflowY: 'auto',
+        p: 2,
+        '& .MuiListItem-root': {
+          transition: 'background-color 0.2s ease',
+        }
+      }}>
         {chats.map((chat) => (
-          <ListItem
+          <ChatListItem
             key={chat.id}
-            disablePadding
-            secondaryAction={
-              <IconButton 
-                edge="end" 
-                onClick={() => onDeleteChat(chat.id)}
-                sx={{ opacity: 0, transition: 'opacity 0.2s', '.MuiListItem-root:hover &': { opacity: 1 } }}
-              >
-                <Delete />
-              </IconButton>
-            }
-          >
-            <ListItemButton 
-              selected={selectedChatId === chat.id}
-              onClick={() => onChatSelect(chat.id)}
-            >
-              <ListItemText 
-                primary={chat.title} 
-                secondary={chat.last_message}
-                primaryTypographyProps={{
-                  noWrap: true,
-                  sx: { fontWeight: selectedChatId === chat.id ? 'bold' : 'normal' }
-                }}
-                secondaryTypographyProps={{
-                  noWrap: true,
-                  sx: { opacity: 0.7 }
-                }}
-              />
-            </ListItemButton>
-          </ListItem>
+            chat={chat}
+            isSelected={chat.id === selectedChatId}
+            onSelect={() => onChatSelect(chat.id)}
+            onDelete={() => onDeleteChat(chat.id)}
+          />
         ))}
         {chats.length === 0 && (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography color="text.secondary">No chats yet</Typography>
-          </Box>
+          <Typography 
+            variant="body2" 
+            color="text.secondary"
+            sx={{ 
+              textAlign: 'center', 
+              mt: 2,
+              fontStyle: 'italic'
+            }}
+          >
+            No chats yet. Create a new one to get started!
+          </Typography>
         )}
       </List>
     </Box>
   );
-}
+});
+
+ChatList.displayName = 'ChatList';
+
+export { ChatList };

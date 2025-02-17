@@ -10,12 +10,16 @@ A modern chat interface for interacting with AI models through OpenRouter, featu
 - 🔑 API key-based authentication
 - 👮‍♂️ Admin dashboard for user management
 - 🎯 Support for multiple chat sessions
+- 🧠 Customizable system prompts per chat
+- 🔄 Development mode table reinitialization option
 - ⚙️ Configurable settings for:
   - OpenRouter API key and endpoint
   - Model selection
   - Token limits
   - Temperature
   - Database connection
+  - System prompts
+  - Development options
 
 ## Prerequisites
 
@@ -143,3 +147,26 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - OpenRouter for AI model access
 - Turso for database services
 - Material-UI for the interface components
+
+## Chat System Features
+
+### System Prompts
+- Each chat session can have its own unique system prompt
+- System prompts guide the AI's behavior throughout the conversation
+- Visible and editable when creating new chats
+- Tooltips show active system prompts in chat sessions
+
+### Development Features
+- Table reinitialization option in development mode
+- Safely reinitialize database tables during development
+- Option only available in non-production environments
+
+### Chat Management
+- Create multiple chat sessions
+- Each chat maintains its own:
+  - Title
+  - System prompt
+  - Message history
+  - Context window
+- Delete individual chats
+- View active system prompts

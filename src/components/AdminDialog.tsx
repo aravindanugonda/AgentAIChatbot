@@ -8,15 +8,13 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
   TextField,
   Typography,
   Box,
   Stack,
   Alert,
 } from '@mui/material';
-import { Delete, Add } from '@mui/icons-material';
+import { Add } from '@mui/icons-material';
 import { TursoService, type User } from '../services/TursoService';
 
 interface AdminDialogProps {

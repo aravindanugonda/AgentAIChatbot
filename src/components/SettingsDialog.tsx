@@ -9,6 +9,9 @@ import {
   Stack,
   Typography,
   Box,
+  Alert,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import type { User } from '../services/TursoService';
 
@@ -16,6 +19,7 @@ interface ApiConfig {
   tursoUrl: string;
   tursoAuthToken?: string;
   userApiKey?: string;
+  reinitializeTables?: boolean;
 }
 
 interface SettingsDialogProps {
@@ -36,19 +40,23 @@ export function SettingsDialog({
   onOpenAdmin 
 }: SettingsDialogProps) {
   const [tempConfig, setTempConfig] = React.useState(config);
+  const [error, setError] = React.useState('');
+  const isDevelopment = process.env.NODE_ENV === 'development';
 
   // Reset temp config when dialog opens with new config
   React.useEffect(() => {
     setTempConfig(config);
+    setError('');
   }, [config, open]);
 
-  const handleSave = () => {
-    // Ensure we preserve any existing userApiKey
-    onSave({
-      ...config,
-      tursoUrl: tempConfig.tursoUrl,
-      tursoAuthToken: tempConfig.tursoAuthToken,
-    });
+  const handleSave = async () => {
+    if (!tempConfig.tursoUrl || !tempConfig.tursoAuthToken) {
+      setError('Both Database URL and Auth Token are required');
+      return;
+    }
+
+    // Save configuration without validation
+    onSave(tempConfig);
     onClose();
   };
 
@@ -57,27 +65,70 @@ export function SettingsDialog({
       <DialogTitle>Database Settings</DialogTitle>
       <DialogContent>
         <Stack spacing={3} sx={{ mt: 1 }}>
+          {error && <Alert severity="error">{error}</Alert>}
           <Typography variant="h6" gutterBottom>Turso Database Connection</Typography>
-          {currentUser?.is_admin ? (
+          {(!config.tursoUrl || !config.tursoAuthToken || currentUser?.is_admin) ? (
             <>
               <TextField
                 label="Turso Database URL"
                 value={tempConfig.tursoUrl}
-                onChange={(e) => setTempConfig({ ...tempConfig, tursoUrl: e.target.value })}
+                onChange={(e) => {
+                  setError('');
+                  setTempConfig({ ...tempConfig, tursoUrl: e.target.value });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                  }
+                }}
                 placeholder="libsql://your-database-url"
                 helperText="The URL of your Turso database"
                 fullWidth
                 required
+                error={!!error && error.includes('URL')}
               />
               <TextField
                 label="Turso Auth Token"
                 value={tempConfig.tursoAuthToken || ''}
-                onChange={(e) => setTempConfig({ ...tempConfig, tursoAuthToken: e.target.value })}
+                onChange={(e) => {
+                  setError('');
+                  setTempConfig({ ...tempConfig, tursoAuthToken: e.target.value });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                  }
+                }}
                 type="password"
                 helperText="Your Turso authentication token"
                 fullWidth
                 required
+                error={!!error && error.includes('Token')}
               />
+              {isDevelopment && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" color="warning.main" gutterBottom>
+                    Development Options
+                  </Typography>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={!!tempConfig.reinitializeTables}
+                        onChange={(e) => setTempConfig({ ...tempConfig, reinitializeTables: e.target.checked })}
+                        color="warning"
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography variant="body2">Reinitialize Tables</Typography>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Warning: This will drop and recreate all tables
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </Box>
+              )}
             </>
           ) : (
             <Typography color="text.secondary">
@@ -101,7 +152,7 @@ export function SettingsDialog({
               Manage Users
             </Button>
           )}
-          {currentUser?.is_admin && (
+          {(!config.tursoUrl || !config.tursoAuthToken || currentUser?.is_admin) && (
             <Button 
               onClick={handleSave} 
               variant="contained"

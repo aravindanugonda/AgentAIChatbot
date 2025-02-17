@@ -3,6 +3,7 @@ import { createClient, type Row } from '@libsql/client';
 interface DbConfig {
   url: string;
   authToken?: string;
+  reinitializeTables?: boolean;
 }
 
 export interface Chat {
@@ -11,6 +12,7 @@ export interface Chat {
   created_at: string;
   last_message?: string;
   user_id: string;
+  system_prompt: string;
 }
 
 export interface Message {
@@ -48,12 +50,118 @@ export interface ApiSettings {
 
 export class TursoService {
   private client;
+  private reinitializeTables;
 
   constructor(config: DbConfig) {
     this.client = createClient({
       url: config.url,
       authToken: config.authToken,
     });
+    this.reinitializeTables = config.reinitializeTables;
+  }
+
+  async initializeTables() {
+    try {
+      // Drop all tables if reinitialize is true
+      if (this.reinitializeTables) {
+        const tables = ['messages', 'chats', 'api_settings', 'api_keys', 'users'];
+        for (const table of tables) {
+          try {
+            await this.client.execute({
+              sql: `DROP TABLE IF EXISTS ${table}`,
+              args: []
+            });
+          } catch (error) {
+            console.error(`Error dropping table ${table}:`, error);
+          }
+        }
+      }
+
+      // Create tables
+      await this.client.execute({
+        sql: `
+          CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            is_admin BOOLEAN DEFAULT FALSE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `,
+        args: []
+      });
+
+      await this.client.execute({
+        sql: `
+          CREATE TABLE IF NOT EXISTS api_keys (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            key TEXT UNIQUE NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id)
+          )
+        `,
+        args: []
+      });
+
+      await this.client.execute({
+        sql: `
+          CREATE TABLE IF NOT EXISTS api_settings (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            openrouter_key TEXT NOT NULL DEFAULT '',
+            api_url TEXT NOT NULL DEFAULT 'https://openrouter.ai/api/v1/chat/completions',
+            model TEXT NOT NULL DEFAULT 'deepseek/deepseek-r1-distill-llama-70b:free',
+            max_tokens INTEGER NOT NULL DEFAULT 4000,
+            temperature REAL NOT NULL DEFAULT 0.7,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id)
+          )
+        `,
+        args: []
+      });
+
+      await this.client.execute({
+        sql: `
+          CREATE TABLE IF NOT EXISTS chats (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_message TEXT,
+            system_prompt TEXT DEFAULT 'You are a helpful AI assistant',
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+          )
+        `,
+        args: []
+      });
+
+      await this.client.execute({
+        sql: `
+          CREATE TABLE IF NOT EXISTS messages (
+            id TEXT PRIMARY KEY,
+            chat_id TEXT NOT NULL,
+            role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+            content TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+          )
+        `,
+        args: []
+      });
+
+      // Add any necessary indexes
+      await this.client.execute({
+        sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_api_settings_user_id ON api_settings(user_id)`,
+        args: []
+      });
+
+    } catch (error) {
+      console.error('Error initializing tables:', error);
+      throw error;
+    }
   }
 
   async checkAdminUser(): Promise<{ exists: boolean; apiKey?: string }> {
@@ -78,145 +186,6 @@ export class TursoService {
     }
   }
 
-  async initializeTables() {
-    // First check if tables exist
-    try {
-      const tableCheck = await this.client.execute({
-        sql: `SELECT name FROM sqlite_master WHERE type='table' AND name IN ('users', 'api_keys', 'api_settings')`,
-        args: []
-      });
-      
-      const existingTables = new Set(tableCheck.rows.map(row => row.name));
-
-      // Create tables if they don't exist
-      if (!existingTables.has('users')) {
-        await this.client.execute({
-          sql: `
-            CREATE TABLE users (
-              id TEXT PRIMARY KEY,
-              email TEXT UNIQUE NOT NULL,
-              is_admin BOOLEAN DEFAULT FALSE,
-              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-          `,
-          args: []
-        });
-      }
-
-      if (!existingTables.has('api_keys')) {
-        await this.client.execute({
-          sql: `
-            CREATE TABLE api_keys (
-              id TEXT PRIMARY KEY,
-              user_id TEXT NOT NULL,
-              key TEXT UNIQUE NOT NULL,
-              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-              UNIQUE(user_id)
-            )
-          `,
-          args: []
-        });
-      }
-
-      if (!existingTables.has('api_settings')) {
-        await this.client.execute({
-          sql: `
-            CREATE TABLE api_settings (
-              id TEXT PRIMARY KEY,
-              user_id TEXT NOT NULL,
-              openrouter_key TEXT NOT NULL DEFAULT '',
-              api_url TEXT NOT NULL DEFAULT 'https://openrouter.ai/api/v1/chat/completions',
-              model TEXT NOT NULL DEFAULT 'deepseek/deepseek-r1-distill-llama-70b:free',
-              max_tokens INTEGER NOT NULL DEFAULT 4000,
-              temperature REAL NOT NULL DEFAULT 0.7,
-              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-              UNIQUE(user_id)
-            )
-          `,
-          args: []
-        });
-      }
-
-      // Drop and recreate api_settings if it has old structure
-      const columnCheck = await this.client.execute({
-        sql: "PRAGMA table_info(api_settings)",
-        args: []
-      });
-      
-      const hasOldStructure = columnCheck.rows.some(row => row.name === 'api_key');
-      if (hasOldStructure) {
-        // Drop the table first
-        await this.client.execute({
-          sql: `DROP TABLE api_settings`,
-          args: []
-        });
-        
-        // Then recreate it
-        await this.client.execute({
-          sql: `
-            CREATE TABLE api_settings (
-              id TEXT PRIMARY KEY,
-              user_id TEXT NOT NULL,
-              openrouter_key TEXT NOT NULL DEFAULT '',
-              api_url TEXT NOT NULL DEFAULT 'https://openrouter.ai/api/v1/chat/completions',
-              model TEXT NOT NULL DEFAULT 'deepseek/deepseek-r1-distill-llama-70b:free',
-              max_tokens INTEGER NOT NULL DEFAULT 4000,
-              temperature REAL NOT NULL DEFAULT 0.7,
-              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-              UNIQUE(user_id)
-            )
-          `,
-          args: []
-        });
-      }
-
-      // Create chats table
-      await this.client.execute({
-        sql: `
-          CREATE TABLE IF NOT EXISTS chats (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            user_id TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            last_message TEXT,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-          )
-        `,
-        args: []
-      });
-
-      // Create messages table
-      await this.client.execute({
-        sql: `
-          CREATE TABLE IF NOT EXISTS messages (
-            id TEXT PRIMARY KEY,
-            chat_id TEXT NOT NULL,
-            role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
-            content TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
-          )
-        `,
-        args: []
-      });
-
-      // Add missing constraints
-      await this.client.execute({
-        sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_api_settings_user_id ON api_settings(user_id)`,
-        args: []
-      });
-
-    } catch (error) {
-      console.error('Error initializing tables:', error);
-      throw error;
-    }
-  }
-
   private rowToChat(row: Row): Chat {
     return {
       id: row.id as string,
@@ -224,6 +193,7 @@ export class TursoService {
       created_at: row.created_at as string,
       last_message: row.last_message as string | undefined,
       user_id: row.user_id as string,
+      system_prompt: row.system_prompt as string,
     };
   }
 
@@ -259,11 +229,11 @@ export class TursoService {
     };
   }
 
-  async createChat(title: string, userId: string): Promise<Chat> {
+  async createChat(title: string, userId: string, systemPrompt: string = 'You are a helpful AI assistant'): Promise<Chat> {
     const chatId = crypto.randomUUID();
     await this.client.execute({
-      sql: 'INSERT INTO chats (id, title, user_id) VALUES (?, ?, ?)',
-      args: [chatId, title, userId]
+      sql: 'INSERT INTO chats (id, title, user_id, system_prompt) VALUES (?, ?, ?, ?)',
+      args: [chatId, title, userId, systemPrompt]
     });
 
     const result = await this.client.execute({

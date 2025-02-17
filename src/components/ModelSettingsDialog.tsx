@@ -30,55 +30,57 @@ export function ModelSettingsDialog({
   onClose,
   onSave,
 }: ModelSettingsDialogProps) {
-  const defaultSettings = {
-    api_key: '',
-    api_url: 'https://openrouter.ai/api/v1/chat/completions',
-    model: 'deepseek/deepseek-r1-distill-llama-70b:free',
-    max_tokens: 4000,
-    temperature: 0.7,
-  };
+  const defaultSettings = React.useMemo(() => ({
+    api_key: apiSettings?.api_key || '',
+    api_url: apiSettings?.api_url || 'https://openrouter.ai/api/v1/chat/completions',
+    model: apiSettings?.model || 'deepseek/deepseek-r1-distill-llama-70b:free',
+    max_tokens: apiSettings?.max_tokens || 4000,
+    temperature: apiSettings?.temperature || 0.7,
+  }), [apiSettings]);
 
-  const [tempSettings, setTempSettings] = React.useState<typeof defaultSettings>(
-    apiSettings ? {
-      api_key: apiSettings.api_key,
-      api_url: apiSettings.api_url,
-      model: apiSettings.model,
-      max_tokens: apiSettings.max_tokens,
-      temperature: apiSettings.temperature,
-    } : defaultSettings
-  );
-
+  const [tempSettings, setTempSettings] = React.useState(defaultSettings);
   const [error, setError] = React.useState<string>('');
   const [showSuccess, setShowSuccess] = React.useState(false);
+  const [isValidating, setIsValidating] = React.useState(false);
 
-  // Update tempSettings when apiSettings changes
-  React.useEffect(() => {
-    if (apiSettings) {
-      setTempSettings({
-        api_key: apiSettings.api_key,
-        api_url: apiSettings.api_url,
-        model: apiSettings.model,
-        max_tokens: apiSettings.max_tokens,
-        temperature: apiSettings.temperature,
+  const validateApiKey = async (apiKey: string) => {
+    try {
+      setIsValidating(true);
+      const response = await fetch('https://openrouter.ai/api/v1/auth/key', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+        }
       });
-    } else {
-      setTempSettings(defaultSettings);
+      return response.ok;
+    } catch (error) {
+      return false;
+    } finally {
+      setIsValidating(false);
     }
-  }, [apiSettings]);
+  };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!tempSettings.api_key) {
       setError('API Key is required');
       return;
     }
-    setError('');
-    onSave(tempSettings);
-    setShowSuccess(true);
+    
+    try {
+      onSave(tempSettings);
+      setShowSuccess(true);
+    } catch (error) {
+      setError('Failed to save settings');
+    }
+  };
+
+  const handleClose = () => {
+    onClose();
   };
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>API Settings</DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 1 }}>
@@ -92,11 +94,15 @@ export function ModelSettingsDialog({
             <TextField
               label="OpenRouter API Key"
               value={tempSettings.api_key}
-              onChange={(e) => setTempSettings({ ...tempSettings, api_key: e.target.value })}
+              onChange={(e) => {
+                setError('');
+                setTempSettings({ ...tempSettings, api_key: e.target.value });
+              }}
               type="password"
               required
               helperText="Enter your OpenRouter API key"
               fullWidth
+              error={!!error}
             />
             <TextField
               label="API URL"
@@ -139,8 +145,14 @@ export function ModelSettingsDialog({
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained">Save</Button>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained"
+            disabled={isValidating || !tempSettings.api_key}
+          >
+            Save
+          </Button>
         </DialogActions>
       </Dialog>
       <Snackbar
@@ -150,7 +162,7 @@ export function ModelSettingsDialog({
         autoHideDuration={1500}
         onClose={() => {
           setShowSuccess(false);
-          onClose();
+          handleClose();
         }}
       />
     </>

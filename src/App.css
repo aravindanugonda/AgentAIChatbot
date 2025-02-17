@@ -1,3 +1,4 @@
+/* Basic app styles */
 .App {
   text-align: left;
 }
@@ -44,23 +45,22 @@ body {
   height: 100vh;
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
+/* Hide scrollbar for better appearance */
 .messages-container::-webkit-scrollbar {
   display: none;
 }
 
-/* Hide scrollbar for IE, Edge and Firefox */
 .messages-container {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Add smooth transition for hover effects */
+/* Basic transitions */
 .MuiButton-root {
   transition: all 0.2s ease-in-out !important;
 }
 
-/* Add animation for loading state */
+/* Loading animation */
 @keyframes pulse {
   0% {
     opacity: 1;

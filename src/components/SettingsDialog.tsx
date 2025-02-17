@@ -7,109 +7,110 @@ import {
   Button,
   TextField,
   Stack,
-  Slider,
   Typography,
+  Box,
 } from '@mui/material';
+import type { User } from '../services/TursoService';
 
 interface ApiConfig {
-  apiKey: string;
-  apiUrl: string;
-  model: string;
-  maxTokens: number;
-  temperature: number;
   tursoUrl: string;
   tursoAuthToken?: string;
+  userApiKey?: string;
 }
 
 interface SettingsDialogProps {
   open: boolean;
   config: ApiConfig;
+  currentUser: User | null;
   onClose: () => void;
   onSave: (config: ApiConfig) => void;
+  onOpenAdmin?: () => void;
 }
 
-export function SettingsDialog({ open, config, onClose, onSave }: SettingsDialogProps) {
+export function SettingsDialog({ 
+  open, 
+  config, 
+  currentUser,
+  onClose, 
+  onSave,
+  onOpenAdmin 
+}: SettingsDialogProps) {
   const [tempConfig, setTempConfig] = React.useState(config);
 
+  // Reset temp config when dialog opens with new config
+  React.useEffect(() => {
+    setTempConfig(config);
+  }, [config, open]);
+
   const handleSave = () => {
-    onSave(tempConfig);
+    // Ensure we preserve any existing userApiKey
+    onSave({
+      ...config,
+      tursoUrl: tempConfig.tursoUrl,
+      tursoAuthToken: tempConfig.tursoAuthToken,
+    });
     onClose();
   };
 
-  React.useEffect(() => {
-    setTempConfig(config);
-  }, [config]);
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Settings</DialogTitle>
+      <DialogTitle>Database Settings</DialogTitle>
       <DialogContent>
         <Stack spacing={3} sx={{ mt: 1 }}>
-          <Typography variant="h6" gutterBottom>API Settings</Typography>
-          <TextField
-            label="API Key"
-            value={tempConfig.apiKey}
-            onChange={(e) => setTempConfig({ ...tempConfig, apiKey: e.target.value })}
-            type="password"
-            fullWidth
-          />
-          <TextField
-            label="API URL"
-            value={tempConfig.apiUrl}
-            onChange={(e) => setTempConfig({ ...tempConfig, apiUrl: e.target.value })}
-            fullWidth
-          />
-          <TextField
-            label="Default Model"
-            value={tempConfig.model}
-            onChange={(e) => setTempConfig({ ...tempConfig, model: e.target.value })}
-            placeholder="e.g., gpt-3.5-turbo, anthropic/claude-2"
-            helperText="Enter any model ID from OpenAI, OpenRouter, or HuggingFace"
-            fullWidth
-          />
-          <Stack spacing={1}>
-            <Typography gutterBottom>Max Tokens: {tempConfig.maxTokens}</Typography>
-            <Slider
-              value={tempConfig.maxTokens}
-              onChange={(_, value) => setTempConfig({ ...tempConfig, maxTokens: value as number })}
-              min={100}
-              max={8000}
-              step={100}
-              valueLabelDisplay="auto"
-            />
-          </Stack>
-          <Stack spacing={1}>
-            <Typography gutterBottom>Temperature: {tempConfig.temperature}</Typography>
-            <Slider
-              value={tempConfig.temperature}
-              onChange={(_, value) => setTempConfig({ ...tempConfig, temperature: value as number })}
-              min={0}
-              max={2}
-              step={0.1}
-              valueLabelDisplay="auto"
-            />
-          </Stack>
-
-          <Typography variant="h6" gutterBottom>Database Settings</Typography>
-          <TextField
-            label="Turso Database URL"
-            value={tempConfig.tursoUrl}
-            onChange={(e) => setTempConfig({ ...tempConfig, tursoUrl: e.target.value })}
-            placeholder="libsql://your-database-url"
-            fullWidth
-          />
-          <TextField
-            label="Turso Auth Token"
-            value={tempConfig.tursoAuthToken}
-            onChange={(e) => setTempConfig({ ...tempConfig, tursoAuthToken: e.target.value })}
-            type="password"
-            fullWidth
-          />
+          <Typography variant="h6" gutterBottom>Turso Database Connection</Typography>
+          {currentUser?.is_admin ? (
+            <>
+              <TextField
+                label="Turso Database URL"
+                value={tempConfig.tursoUrl}
+                onChange={(e) => setTempConfig({ ...tempConfig, tursoUrl: e.target.value })}
+                placeholder="libsql://your-database-url"
+                helperText="The URL of your Turso database"
+                fullWidth
+                required
+              />
+              <TextField
+                label="Turso Auth Token"
+                value={tempConfig.tursoAuthToken || ''}
+                onChange={(e) => setTempConfig({ ...tempConfig, tursoAuthToken: e.target.value })}
+                type="password"
+                helperText="Your Turso authentication token"
+                fullWidth
+                required
+              />
+            </>
+          ) : (
+            <Typography color="text.secondary">
+              Only administrators can modify database settings.
+            </Typography>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSave} variant="contained">Save</Button>
+        <Stack direction="row" spacing={1} sx={{ width: '100%', px: 2 }}>
+          <Button onClick={onClose}>Cancel</Button>
+          <Box sx={{ flex: 1 }} />
+          {currentUser?.is_admin && onOpenAdmin && (
+            <Button 
+              onClick={() => {
+                onClose();
+                onOpenAdmin();
+              }}
+              color="secondary"
+            >
+              Manage Users
+            </Button>
+          )}
+          {currentUser?.is_admin && (
+            <Button 
+              onClick={handleSave} 
+              variant="contained"
+              disabled={!tempConfig.tursoUrl || !tempConfig.tursoAuthToken}
+            >
+              Save
+            </Button>
+          )}
+        </Stack>
       </DialogActions>
     </Dialog>
   );

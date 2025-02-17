@@ -49,8 +49,10 @@ export function AdminDialog({
           setLoading(true);
           setError('');
           const db = new TursoService({
-            url: localStorage.getItem('apiConfig') ? JSON.parse(localStorage.getItem('apiConfig')!).tursoUrl : '',
-            authToken: localStorage.getItem('apiConfig') ? JSON.parse(localStorage.getItem('apiConfig')!).tursoAuthToken : ''
+            url: process.env.REACT_APP_TURSO_DB_URL || 
+              (localStorage.getItem('apiConfig') ? JSON.parse(localStorage.getItem('apiConfig')!).tursoUrl : ''),
+            authToken: process.env.REACT_APP_TURSO_AUTH_TOKEN || 
+              (localStorage.getItem('apiConfig') ? JSON.parse(localStorage.getItem('apiConfig')!).tursoAuthToken : '')
           });
           const keys = await db.getAllApiKeys();
           setUserApiKeys(keys);

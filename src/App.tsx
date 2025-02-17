@@ -38,19 +38,24 @@ function App() {
   const [config, setConfig] = useState<ApiConfig>(() => {
     const saved = localStorage.getItem('apiConfig');
     const defaultConfig = {
-      tursoUrl: '',
-      tursoAuthToken: '',
+      tursoUrl: process.env.REACT_APP_TURSO_DB_URL || '',
+      tursoAuthToken: process.env.REACT_APP_TURSO_AUTH_TOKEN || '',
       userApiKey: undefined,
     };
     
+    // If environment variables are set, use them
+    if (defaultConfig.tursoUrl && defaultConfig.tursoAuthToken) {
+      return defaultConfig;
+    }
+    
+    // Otherwise fall back to localStorage
     if (!saved) return defaultConfig;
     
     const parsed = JSON.parse(saved);
-    // Only load database settings initially, ignore userApiKey
     return {
       ...defaultConfig,
-      tursoUrl: parsed.tursoUrl || '',
-      tursoAuthToken: parsed.tursoAuthToken || '',
+      tursoUrl: parsed.tursoUrl || defaultConfig.tursoUrl,
+      tursoAuthToken: parsed.tursoAuthToken || defaultConfig.tursoAuthToken,
     };
   });
 
